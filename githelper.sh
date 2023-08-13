@@ -62,10 +62,8 @@ quit () {
 do_quit=false
 
 while [ "$do_quit" != "true" ]; do
-	echo "choose git command (s/l/aa/ac/c/rhc/push/pull), list options(o) or quit(q):\n"
-
-	read n
-	case $n in
+	read -p "Choose git command (s/l/aa/ac/c/rhc/push/pull), list options(o) or quit(q): " option
+	case $option in
 	  s) status;;
 	  l) log;;
 	  aa) add_all;;
