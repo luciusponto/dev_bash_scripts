@@ -5,7 +5,7 @@ status () {
 }
 
 log () {
-	git log && echo "" 
+	git log --oneline && echo "" 
 }
 
 add_all () {
@@ -55,7 +55,7 @@ commit_ammend () {
 
 list_options () {
 	echo -e "\nGit helper. Available commands:\n"
-	echo "  s) status"
+	echo "  s) status --oneline"
 	echo "  l) log"
 	echo "  aa) add ."
 	echo "  ac) add . && commit"
