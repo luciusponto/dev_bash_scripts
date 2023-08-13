@@ -9,19 +9,19 @@ log () {
 }
 
 add_all () {
-	git add . && git status
+	git add . && echo "" && git status
 }
 
 add_all_and_commit () {
-	git add . && commit &&	git status
+	git add . && echo "" && commit &&	echo "" && git status
 }
 
 add_commit_push () {
-	git add . && commit && push &&	git status
+	git add . && echo "" && commit && echo "" && push && echo "" && git status
 }
 
 reset_hard () {
-	git reset --hard && git clean -df
+	git reset --hard && echo "" && git clean -df
 }
 
 push () {
@@ -41,7 +41,7 @@ get_commit_message () {
 }
 
 commit () {
-	get_commit_message && git commit -m "$message"
+	get_commit_message && git commit -m "$message" && echo "" && git log -1
 }
 
 display_post_amend_message () {
@@ -77,6 +77,7 @@ message=""
 
 while [ "$do_quit" != "true" ]; do
 	read -p "Command (s/l/aa/ac/acp/c/am/rhc/push/pull), help(h) or quit(q): " option
+	echo ""
 	case $option in
 	  s) status; quit;;
 	  l) log; quit;;
