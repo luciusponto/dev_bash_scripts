@@ -32,25 +32,40 @@ pull () {
 	git pull origin main
 }
 
-commit () {
-	read -p "Type commit message: " message
+get_commit_message () {
+	read -p "Type commit message (no quotes): " message
 	if [ "$message" == "" ]; then
 		echo "No commit message supplied. Aborting."
 		return 1
 	fi
-	git commit -m "$message"
+}
+
+commit () {
+	get_commit_message && git commit -m "$message"
+}
+
+display_post_amend_message () {
+	echo -e "\nAmmened last commit message in local repo.\nIf the changes were already pushed to the remote repository, run:"
+	echo "git push --force [repository-name] [branch-name]"
+}
+
+commit_ammend () {
+	get_commit_message && git commit --amend -m "$message" && display_post_amend_message
 }
 
 list_options () {
+	echo -e "\nGit helper. Available commands:\n"
 	echo "  s) status"
 	echo "  l) log"
 	echo "  aa) add ."
 	echo "  ac) add . && commit"
 	echo "  acp) add . && commit && push"
 	echo "  c) commit"
+	echo "  am) commit --amend (amend last commit message)"
 	echo "  rhc) reset --hard && clean -df (reset hard and delete untracked files)"
 	echo "  push) push -u origin main" 
 	echo "  pull) pull origin main"
+	echo ""
 }
 
 quit () {
@@ -58,9 +73,10 @@ quit () {
 }
 
 do_quit=false
+message=""
 
 while [ "$do_quit" != "true" ]; do
-	read -p "Choose git command (s/l/aa/ac/acp/c/rhc/push/pull), list options(o) or quit(q): " option
+	read -p "Command (s/l/aa/ac/acp/c/am/rhc/push/pull), help(h) or quit(q): " option
 	case $option in
 	  s) status; quit;;
 	  l) log; quit;;
@@ -68,11 +84,12 @@ while [ "$do_quit" != "true" ]; do
 	  ac) add_all_and_commit; quit;;
 	  acp) add_commit_push; quit;;
 	  c) commit; quit;;
+	  am) commit_ammend; quit;;
 	  rhc) reset_hard; quit;;
 	  push) push; quit;;
 	  pull) pull; quit;;
-	  o) list_options;;
+	  h) list_options;;
 	  q) quit;;
-	  *) echo "invalid option";;
+	  *) echo "Invalid option"; list_options; quit;;
 	esac
 done
