@@ -16,8 +16,15 @@ add_all () {
 	quit
 }
 
+add_all_and_commit () {
+	git add .
+	commit
+	git status
+	quit
+}
+
 reset_hard () {
-	git reset --hard
+	git reset --hard && git clean -df
 	quit
 }
 
@@ -41,8 +48,9 @@ list_options () {
 	echo "  s) status"
 	echo "  l) log"
 	echo "  aa) add ."
+	echo "  ac) add . && commit"
 	echo "  c) commit"
-	echo "  rh) reset --hard"
+	echo "  rhc) reset --hard && clean -df (reset hard and delete untracked files)"
 	echo "  push) push -u origin main" 
 	echo "  pull) pull origin main"
 }
@@ -54,15 +62,16 @@ quit () {
 do_quit=false
 
 while [ "$do_quit" != "true" ]; do
-	echo "choose git command (s/l/aa/c/rh/push/pull), list options(o) or quit(q):\n"
+	echo "choose git command (s/l/aa/ac/c/rhc/push/pull), list options(o) or quit(q):\n"
 
 	read n
 	case $n in
 	  s) status;;
 	  l) log;;
 	  aa) add_all;;
+	  ac) add_all_and_commit;;
 	  c) commit;;
-	  rh) reset_hard;;
+	  rhc) reset_hard;;
 	  push) push;;
 	  pull) pull;;
 	  o) list_options;;
