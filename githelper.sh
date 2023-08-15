@@ -13,10 +13,10 @@ add_all () {
 }
 
 add_all_and_commit () {
-	git add . && echo "" && commit &&	echo "" && git status && echo "" 
+	git add . && echo "" && commit && echo "" && git status && echo "" 
 }
 
-add_commit_push () {
+add_all_commit_push () {
 	git add . && echo "" && commit && echo "" && push && echo "" && git status && echo "" 
 }
 
@@ -25,7 +25,14 @@ reset_hard () {
 }
 
 push () {
-	git push -u origin main && echo "" 
+	remotes=$(git remote | tr "\n" "/" | sed -e "s/\/$//")
+	if [ $remotes == "" ]; then
+		echo "No remotes configured. Aborting push command."
+		return 1
+	fi
+	branches=$(git branch | sed -e "s/^[* ] //" | tr "\n" "/" | sed -e "s/\/$//")
+	read -p "remote name ($remotes): " remote && read -p "branch to push ($branches): " branch
+	git push -u $remote $branch && echo "" 
 }
 
 pull () {
@@ -87,6 +94,7 @@ list_options () {
 	echo "  l) git log --oneline"
 	echo "  aa) git add ."
 	echo "  ac) git add . && git commit -m \"[prompt for message]\""
+	echo "  acp) git add . && git commit -m && git push"
 	echo "  c) git commit -m \"[prompt for message]\""
 	echo "  am) git commit --amend -m \"[prompt for message]\" (amend last commit message)"
 	echo "  rhc) git reset --hard && git clean -df (reset hard and delete untracked files)"
@@ -105,13 +113,14 @@ do_quit=false
 message=""
 
 while [ "$do_quit" != "true" ]; do
-	read -p "Command (s/l/aa/ac/c/am/rhc/cs/csq), help(h) or quit(q): " option
+	read -p "Command (s/l/aa/ac/acp/c/am/rhc/cs/csq), help(h) or quit(q): " option
 	echo ""
 	case $option in
 	  s) status;;
 	  l) log;;
 	  aa) add_all;;
 	  ac) add_all_and_commit;;
+	  acp) add_all_commit_push;;
 	  c) commit;;
 	  am) commit_ammend;;
 	  rhc) reset_hard;;
@@ -122,3 +131,4 @@ while [ "$do_quit" != "true" ]; do
 	  *) echo "Invalid option"; list_options;;
 	esac
 done
+
