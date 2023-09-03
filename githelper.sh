@@ -88,16 +88,45 @@ print_cheat_sheet () {
 	# echo "  pull) pull origin main"
 }
 
+diff () {
+	files=$(git status | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
+	filecount=$(echo $files | wc -l)
+	[ $filecount -eq 0 ] && echo "No modified files found" && return 3
+	i=0
+	for file in $files; do
+		let i=$i+1
+		echo "$i - $file"
+	done
+	echo ""
+	read -p "Desired file number (1 - $filecount): " fnumber
+	num_regex="^[0-9]+$"
+	if ! [[ $fnumber =~ $num_regex ]] ; then
+		echo "Invalid option: $fnumber. Not a number."
+		return 1
+	fi
+	if [ $fnumber -lt 1 ] || [ $fnumber -gt $filecount ]; then
+		echo "Not in range: $fnumber. It should have been a number between 1 and $filecount." && return 2
+	fi
+	filepath=$(echo $files | cut -f$fnumber -d " ")
+	if [ $? -ne 0 ] || [ ! -f $filepath ]; then
+		echo "File not found"
+		return 4
+	else
+		git diff $filepath
+	fi
+}
+
 list_options () {
 	echo -e "\nGit helper. Available commands:\n"
 	echo "  s)git status"
 	echo "  l) git log --oneline"
 	echo "  aa) git add ."
 	echo "  ac) git add . && git commit -m \"[prompt for message]\""
-	echo "  acp) git add . && git commit -m && git push"
+	echo "  acp) git add . && git commit -m && git push -u"
 	echo "  c) git commit -m \"[prompt for message]\""
 	echo "  am) git commit --amend -m \"[prompt for message]\" (amend last commit message)"
 	echo "  rhc) git reset --hard && git clean -df (reset hard and delete untracked files)"
+	echo "  d) git diff, choosing from a list of files"
 	echo "  cs) print cheat sheet to screen"
 	echo "  csq) print cheat sheet to screen and quit"
 	# echo "push -u origin main" 
@@ -113,7 +142,7 @@ do_quit=false
 message=""
 
 while [ "$do_quit" != "true" ]; do
-	read -p "Command (s/l/aa/ac/acp/c/am/rhc/cs/csq), help(h) or quit(q): " option
+	read -p "Command (s/l/aa/ac/acp/c/am/rhc/d/cs/csq), help(h) or quit(q): " option
 	echo ""
 	case $option in
 	  s) status;;
@@ -124,6 +153,7 @@ while [ "$do_quit" != "true" ]; do
 	  c) commit;;
 	  am) commit_ammend;;
 	  rhc) reset_hard;;
+	  d) diff;;
 	  cs) print_cheat_sheet;;
 	  csq) print_cheat_sheet; quit;;
 	  h) list_options;;
