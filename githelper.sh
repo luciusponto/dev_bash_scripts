@@ -90,7 +90,7 @@ print_cheat_sheet () {
 
 diff () {
 	files=$(git status | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
-	filecount=$(echo $files | wc -l)
+	filecount=$(echo -e "$files" | wc -l)
 	[ $filecount -eq 0 ] && echo "No modified files found" && return 3
 	i=0
 	for file in $files; do
