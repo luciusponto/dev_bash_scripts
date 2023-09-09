@@ -1,5 +1,7 @@
 #!/bin/bash
 
+MAX_OPTIONS=20
+
 status () {
 	git status && echo "" 
 }
@@ -25,19 +27,36 @@ reset_hard () {
 }
 
 push () {
-	remotes=$(git remote | tr "\n" "/" | sed -e "s/\/$//")
-	if [ $remotes == "" ]; then
-		echo "No remotes configured. Aborting push command."
+	remotes=$(git remote)
+	choose_option "$remotes" "Choose remote: " "No remotes configured. Aborting push command."
+	ret_code=$?; [ $? -ne 0 ] && return $ret_code
+	remote=$option
+	branches=$(git branch | sed -e "s/^[* ] //")
+	curr_branch=$(git branch --show-current)
+	choose_option "$branches" "Choose branch (current = $curr_branch)" "No branches found. Aborting push command."
+	ret_code=$?; [ $? -ne 0 ] && return $ret_code
+	branch=$option
+	confirm "About to run: git push -u $remote $branch." && echo "running push" && echo "a"
+	return $?
+}
+
+#$1 is the message. E.g.: "The following command will run: git push -u $remote $branch."
+confirm () {
+	echo -n "$1"
+	read -p " Confirm? (y/n)" confirm
+	conf_low=$(echo "$confirm" | tr '[:upper:]' '[:lower:]')
+	if [[ "$conf_low" == "y" ]]; then
+		return 0
+	else
+		echo -e "Cancelled by user request"
 		return 1
 	fi
-	branches=$(git branch | sed -e "s/^[* ] //" | tr "\n" "/" | sed -e "s/\/$//")
-	read -p "remote name ($remotes): " remote && read -p "branch to push ($branches): " branch
-	git push -u $remote $branch && echo "" 
 }
 
 pull () {
 	git pull origin main && echo "" 
 }
+
 
 get_commit_message () {
 	read -p "Type commit message (no quotes): " message
@@ -90,30 +109,50 @@ print_cheat_sheet () {
 
 diff () {
 	files=$(git status | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
-	filecount=$(echo -e "$files" | wc -l)
-	[ $filecount -eq 0 ] && echo "No modified files found" && return 3
+	choose_option "$files" "Choose desired file"
+	if [ $? -ne 0 ]; then
+		return 1
+	elif  [ ! -f $option ]; then
+		echo "File not found"
+		return 2
+	fi
+	git diff $option
+}
+
+# $1 is the options, one per line
+# $2 is the selection message. E.g.: "Choose desired file"
+# $3 is message if no options were provided. E.g.: "No remotes configured. Aborting push command."
+choose_option () {
+	option_count=$(echo -e "$1" | wc -l)
+	[ $option_count -eq 0 ] && echo -e "$3" && return 3
+	[ $option_count -eq 1 ] && option=$(echo "$1" | cut -f1 -d " ") && return 0
 	i=0
-	for file in $files; do
+	limited=0
+	for option in $1; do
 		let i=$i+1
-		echo "$i - $file"
+		echo "$i - $option"
+		if [ $i -eq $MAX_OPTIONS ]; then
+			let ommited_count=$option_count-$MAX_OPTIONS
+			echo "Max options reached ($MAX_OPTIONS). Omitting last $ommited_count options"
+			break
+		fi
 	done
 	echo ""
-	read -p "Desired file number (1 - $filecount): " fnumber
+	read -p "$2 (1 - $option_count): " opt_number
 	num_regex="^[0-9]+$"
-	if ! [[ $fnumber =~ $num_regex ]] ; then
-		echo "Invalid option: $fnumber. Not a number."
+	if ! [[ $opt_number =~ $num_regex ]] ; then
+		echo "Invalid option: $opt_number. Not a number."
 		return 1
 	fi
-	if [ $fnumber -lt 1 ] || [ $fnumber -gt $filecount ]; then
-		echo "Not in range: $fnumber. It should have been a number between 1 and $filecount." && return 2
+	if [ $opt_number -lt 1 ] || [ $opt_number -gt $option_count ]; then
+		echo "Not in range: $opt_number. It should have been a number between 1 and $option_count." && return 2
 	fi
-	filepath=$(echo $files | cut -f$fnumber -d " ")
-	if [ $? -ne 0 ] || [ ! -f $filepath ]; then
-		echo "File not found"
+	value=$(echo $1 | cut -f$opt_number -d " ")
+	if [ $? -ne 0 ]; then
+		echo "Error selecting option"
 		return 4
-	else
-		git diff $filepath
-	fi
+	fi	
+	option="$value"
 }
 
 list_options () {
@@ -124,13 +163,12 @@ list_options () {
 	echo "  ac) git add . && git commit -m \"[prompt for message]\""
 	echo "  acp) git add . && git commit -m && git push -u"
 	echo "  c) git commit -m \"[prompt for message]\""
+	echo "  p) git push, choosing from a list of remotes and branches"
 	echo "  am) git commit --amend -m \"[prompt for message]\" (amend last commit message)"
 	echo "  rhc) git reset --hard && git clean -df (reset hard and delete untracked files)"
 	echo "  d) git diff, choosing from a list of files"
 	echo "  cs) print cheat sheet to screen"
 	echo "  csq) print cheat sheet to screen and quit"
-	# echo "push -u origin main" 
-	# echo "  pull) pull origin main"
 	echo ""
 }
 
@@ -140,9 +178,11 @@ quit () {
 
 do_quit=false
 message=""
+option=""
 
 while [ "$do_quit" != "true" ]; do
-	read -p "Command (s/l/aa/ac/acp/c/am/rhc/d/cs/csq), help(h) or quit(q): " option
+	echo ""
+	read -p "Command (s/l/aa/ac/acp/c/p/am/rhc/d/cs/csq), help(h) or quit(q): " option
 	echo ""
 	case $option in
 	  s) status;;
@@ -151,6 +191,7 @@ while [ "$do_quit" != "true" ]; do
 	  ac) add_all_and_commit;;
 	  acp) add_all_commit_push;;
 	  c) commit;;
+	  p) push;;
 	  am) commit_ammend;;
 	  rhc) reset_hard;;
 	  d) diff;;
