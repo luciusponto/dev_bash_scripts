@@ -33,10 +33,10 @@ push () {
 	remote=$option
 	branches=$(git branch | sed -e "s/^[* ] //")
 	curr_branch=$(git branch --show-current)
-	choose_option "$branches" "Choose branch (current = $curr_branch)" "No branches found. Aborting push command."
+	choose_option "$branches" "Choose branch to push. Default is current local branch \"$curr_branch\"." "No branches found. Aborting push command." "$curr_branch"
 	ret_code=$?; [ $? -ne 0 ] && return $ret_code
 	branch=$option
-	confirm "About to run: git push -u $remote $branch." && echo "running push" && echo "a"
+	confirm "About to run: git push -u $remote $branch." && git push -u $remote $branch && echo ""
 	return $?
 }
 
@@ -89,6 +89,7 @@ print_args () {
 print_cheat_sheet () {
 	echo -e "In the below, [remote] is the remote repo name, like \"origin\"; [branch] is a branch name, like \"main\"\n"
 	print_args "Create local branch" "git branch [branch]"
+	print_args "Create local branch and switch to it" "git checkout -b [branch]"
 	print_args "Push local branch to remote, create if needed" "git push -u [remote] [branch]"
 	print_args "Pull remote branch to local" "git pull [remote] [branch]"
 	print_args "Switch to another branch" "git switch [branch]"
@@ -122,8 +123,25 @@ diff () {
 # $1 is the options, one per line
 # $2 is the selection message. E.g.: "Choose desired file"
 # $3 is message if no options were provided. E.g.: "No remotes configured. Aborting push command."
+# $4 is the default option. E.g. "main"
 choose_option () {
 	option_count=$(echo -e "$1" | wc -l)
+
+	default_option="$4"
+	default_option_number=1
+	has_default=false
+	default_option_message=""
+	if [ "$default_option" != "" ]; then
+		for option_str in $1; do
+			if [ "$option_str" == "$default_option" ]; then
+				has_default=true
+				default_option_message=" or ENTER for default"
+				break
+			fi
+			let default_option_number=$default_option_number+1
+		done
+	fi
+			
 	[ $option_count -eq 0 ] && echo -e "$3" && return 3
 	[ $option_count -eq 1 ] && option=$(echo "$1" | cut -f1 -d " ") && return 0
 	i=0
@@ -138,8 +156,12 @@ choose_option () {
 		fi
 	done
 	echo ""
-	read -p "$2 (1 - $option_count): " opt_number
+	echo "$2"
+	read -p "(1 - $option_count)$default_option_message: " opt_number
 	num_regex="^[0-9]+$"
+	if [ "$has_default" == "true" ]; then
+		opt_number=$default_option_number
+	fi
 	if ! [[ $opt_number =~ $num_regex ]] ; then
 		echo "Invalid option: $opt_number. Not a number."
 		return 1
