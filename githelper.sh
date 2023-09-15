@@ -2,8 +2,12 @@
 
 MAX_OPTIONS=20
 
+status_command_only () {
+	git status -u
+}
+
 status () {
-	git status && echo "" 
+	status_command_only && echo "" 
 }
 
 log () {
@@ -11,15 +15,15 @@ log () {
 }
 
 add_all () {
-	git add . && echo "" && git status && echo "" 
+	git add . && echo "" && status 
 }
 
 add_all_and_commit () {
-	git add . && echo "" && commit && echo "" && git status && echo "" 
+	git add . && echo "" && commit && echo "" && status
 }
 
 add_all_commit_push () {
-	git add . && echo "" && commit && echo "" && push && echo "" && git status && echo "" 
+	git add . && echo "" && commit && echo "" && push && echo "" && status
 }
 
 reset_hard () {
@@ -109,7 +113,7 @@ print_cheat_sheet () {
 }
 
 diff () {
-	files=$(git status | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
+	files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
 	choose_option "$files" "Choose desired file"
 	if [ $? -ne 0 ]; then
 		return 1
@@ -179,7 +183,7 @@ choose_option () {
 
 list_options () {
 	echo -e "\nGit helper. Available commands:\n"
-	echo "  s)git status"
+	echo "  s)git status -u"
 	echo "  l) git log --oneline"
 	echo "  aa) git add ."
 	echo "  ac) git add . && git commit -m \"[prompt for message]\""
