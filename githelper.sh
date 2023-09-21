@@ -121,7 +121,7 @@ diff () {
 		echo "File not found"
 		return 2
 	fi
-	git diff $option
+	git diff HEAD $option
 }
 
 # $1 is the options, one per line
@@ -221,7 +221,7 @@ while [ "$do_quit" != "true" ]; do
 	  am) commit_ammend;;
 	  rhc) reset_hard;;
 	  d) diff;;
-	  cs) print_cheat_sheet;;
+	  cs) print_cheat_sheet | less;;
 	  csq) print_cheat_sheet; quit;;
 	  h) list_options;;
 	  q) quit;;
