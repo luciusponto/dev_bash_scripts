@@ -94,6 +94,7 @@ print_cheat_sheet () {
 	echo -e "In the below, [remote] is the remote repo name, like \"origin\"; [branch] is a branch name, like \"main\"\n"
 	print_args "Create local branch" "git branch [branch]"
 	print_args "Create local branch and switch to it" "git checkout -b [branch]"
+	print_args "List remote branches" "git branch -r"
 	print_args "Push local branch to remote, create if needed" "git push -u [remote] [branch]"
 	print_args "Pull remote branch to local" "git pull [remote] [branch]"
 	print_args "Switch to another branch" "git switch [branch]"
