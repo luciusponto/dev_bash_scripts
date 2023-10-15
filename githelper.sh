@@ -113,8 +113,18 @@ print_cheat_sheet () {
 	# echo "  pull) pull origin main"
 }
 
+diff_scripts () {
+	diff ".*\.gd|.*\.cs|.*\.sh|.*\.bat"
+}
+
 diff () {
 	files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
+	if [ "$1" != "" ]; then
+		files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | grep -Ee ".*\.cs|.*\.gd" | sed -e "s/.* //")
+		#files=$(echo -e "$files" | grep -e "$1")
+	else
+		files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
+	fi
 	choose_option "$files" "Choose desired file"
 	if [ $? -ne 0 ]; then
 		return 1
@@ -194,6 +204,7 @@ list_options () {
 	echo "  am) git commit --amend -m \"[prompt for message]\" (amend last commit message)"
 	echo "  rhc) git reset --hard && git clean -df (reset hard and delete untracked files)"
 	echo "  d) git diff, choosing from a list of files"
+	echo "  ds) git diff scripts only (*.gd, *.cs, *.sh, *.bat), choosing from a list of files"
 	echo "  cs) print cheat sheet to screen"
 	echo "  csq) print cheat sheet to screen and quit"
 	echo ""
@@ -209,7 +220,7 @@ option=""
 
 while [ "$do_quit" != "true" ]; do
 	echo ""
-	read -p "Command (s/l/aa/ac/acp/c/p/am/rhc/d/cs/csq), help(h) or quit(q): " option
+	read -p "Command (s/l/aa/ac/acp/c/p/am/rhc/d/ds/cs/csq), help(h) or quit(q): " option
 	echo ""
 	case $option in
 	  s) status;;
@@ -222,6 +233,7 @@ while [ "$do_quit" != "true" ]; do
 	  am) commit_ammend;;
 	  rhc) reset_hard;;
 	  d) diff;;
+	  ds) diff_scripts;;
 	  cs) print_cheat_sheet | less;;
 	  csq) print_cheat_sheet; quit;;
 	  h) list_options;;
