@@ -1,0 +1,5 @@
+tmp|/c/tmp
+projects|/c/Users/lucia/dev/projects
+Godot 4 projects|/c/Users/lucia/dev/projects/Godot4
+First person controller project|/c/Users/lucia/dev/projects/Godot4/godot_first_person_controller
+First person controller addon|/c/Users/lucia/dev/projects/Godot4/godot_first_person_controller/addons/first_person_controller

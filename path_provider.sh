@@ -99,7 +99,6 @@ print_cheat_sheet () {
 	print_args "Pull remote branch to local" "git pull [remote] [branch]"
 	print_args "Switch to another branch" "git switch [branch]"
 	print_args "Merge into current branch, squashing other branch commits" " git merge --squash [other_branch]"
-	print_args "Solve merge conflict by accepting other branch's version" "git checkout --theirs <file name>; git add <file name>"
 	print_args "Delete local branch" "git branch -d [branch]"
 	print_args "Delete remote branch" "git push [remote] --delete [branch]"
 	print_args "Push uncommited changes into stash stack, not including untracked files" "git stash push -m \"[message]\""
