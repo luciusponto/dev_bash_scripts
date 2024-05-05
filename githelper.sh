@@ -110,6 +110,7 @@ print_cheat_sheet () {
 	print_args "Apply contents of stash to working copy, keeping stash, <revision> from \"git stash list\"" "git stash apply stash@{<revision>}"
 	print_args "Apply contents of stash to working copy, then delete stash, <revision> from \"git stash list\"" "git stash pop stash@{<revision>}"
 	print_args "Delete stash, <revision> from \"git stash list\"" "git stash drop stash@{<revision>}"
+	print_args "Checkout PR locally" "git fetch origin pull/PR_NUMBER/head:branch-name"
 	# echo -e "Push branch to remote, create if needed:\npush -u origin main\n\n" 
 	# echo "  pull) pull origin main"
 }
@@ -134,6 +135,29 @@ diff () {
 		return 2
 	fi
 	git diff HEAD $option
+}
+
+apply_pr () {
+	echo -e "\nRemember to be at the correct branch and reset working copy tracked files\n(git reset --hard)\n"
+	read -p "Confirm? (y/n): " pr_conf
+	[ "$pr_conf" != "y" ] && [ "$pr_conf" != "Y" ] && echo "Aborted." && return 4
+	echo -e "\nEnter pull request URL (e.g. https://github.com/godotengine/godot/pull/1234):"
+	read pr_url
+	echo ""
+	pr_pattern="^.*github\\.com.*\\/pull\\/[0-9]+$"
+	echo "$pr_url" | grep -Pe "$pr_pattern" 2>&1 > /dev/null
+	[ $? -ne 0 ] && echo -e "Pull request URL: $pr_url\ndoes not match PR pattern: \"$pr_pattern\".\nAborting" && return 1
+	patch_path="/tmp/$(date '+%Y%m%d_%H%M%S').patch"
+	curl -L "$pr_url".patch -o "$patch_path"
+	[ $? -ne 0 ] && echo "Patch could not be downloaded. Aborting" && return 1
+	echo -e "\nDownloaded patch file to $patch_path."
+	grep "$patch_path" -e "^diff --git" 2>&1 > /dev/null
+	[ $? -ne 0 ] && echo -e "\nPatch file contents did not match expected pattern. Aborting." && return 2
+	echo -e "\nApplying patch file..."
+	git apply "$patch_path"
+	result_code=$?
+	[ $result_code -eq 0 ] && echo -e "\nPatch successfully applied." && return 0
+	echo -e "\ngit apply $patch_file: failed with error code $return_code" && return $return_code
 }
 
 # $1 is the options, one per line
@@ -200,6 +224,7 @@ list_options () {
 	echo "  aa) git add ."
 	echo "  ac) git add . && git commit -m \"[prompt for message]\""
 	echo "  acp) git add . && git commit -m && git push -u"
+	echo "  apr) apply patch from pull request"
 	echo "  c) git commit -m \"[prompt for message]\""
 	echo "  p) git push, choosing from a list of remotes and branches"
 	echo "  am) git commit --amend -m \"[prompt for message]\" (amend last commit message)"
@@ -221,7 +246,7 @@ option=""
 
 while [ "$do_quit" != "true" ]; do
 	echo ""
-	read -p "Command (s/l/aa/ac/acp/c/p/am/rhc/d/ds/cs/csq), help(h) or quit(q): " option
+	read -p "Command (s/l/aa/ac/acp/apr/c/p/am/rhc/d/ds/cs/csq), help(h) or quit(q): " option
 	echo ""
 	case $option in
 	  s) status;;
@@ -229,6 +254,7 @@ while [ "$do_quit" != "true" ]; do
 	  aa) add_all;;
 	  ac) add_all_and_commit;;
 	  acp) add_all_commit_push;;
+	  apr) apply_pr;;
 	  c) commit;;
 	  p) push;;
 	  am) commit_ammend;;
