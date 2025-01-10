@@ -58,7 +58,7 @@ confirm () {
 }
 
 pull () {
-	git pull origin main && echo "" 
+	git pull && echo "" 
 }
 
 
@@ -227,6 +227,7 @@ list_options () {
 	echo "  apr) apply patch from pull request"
 	echo "  c) git commit -m \"[prompt for message]\""
 	echo "  p) git push, choosing from a list of remotes and branches"
+	echo "	pl) git pull"
 	echo "  am) git commit --amend -m \"[prompt for message]\" (amend last commit message)"
 	echo "  rhc) git reset --hard && git clean -df (reset hard and delete untracked files)"
 	echo "  d) git diff, choosing from a list of files"
@@ -246,7 +247,7 @@ option=""
 
 while [ "$do_quit" != "true" ]; do
 	echo ""
-	read -p "Command (s/l/aa/ac/acp/apr/c/p/am/rhc/d/ds/cs/csq), help(h) or quit(q): " option
+	read -p "Command (s/l/aa/ac/acp/apr/c/p/pl/am/rhc/d/ds/cs/csq), help(h) or quit(q): " option
 	echo ""
 	case $option in
 	  s) status;;
@@ -257,6 +258,7 @@ while [ "$do_quit" != "true" ]; do
 	  apr) apply_pr;;
 	  c) commit;;
 	  p) push;;
+	  pl) pull;;
 	  am) commit_ammend;;
 	  rhc) reset_hard;;
 	  d) diff;;
