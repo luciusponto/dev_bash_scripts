@@ -63,7 +63,8 @@ pull () {
 
 
 get_commit_message () {
-	read -p "Type commit message (no quotes): " message
+	echo "Type commit message (no quotes):"
+	read -p "" message
 	if [ "$message" == "" ]; then
 		echo "No commit message supplied. Aborting."
 		return 1
@@ -119,22 +120,56 @@ diff_scripts () {
 	diff ".*\.gd|.*\.cs|.*\.sh|.*\.bat"
 }
 
+restore_single_file () {
+	local file_pattern=$1
+	while [ 0 -ne 1 ]; do
+		if [ "$file_pattern" != "" ]; then
+			files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | grep -Ee ".*\.cs|.*\.gd" | sed -e "s/.* //")
+			#files=$(echo -e "$files" | grep -e "$1")
+		else
+			files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
+		fi
+		if [ "$files" == "" ]; then
+			echo "No modified files found"
+			break
+		fi		
+		choose_option "$files" "Choose desired file (or just press ENTER to return)" 0 0 1
+		local return_code=$?
+		if [ $return_code -eq 5 ] || [ $return_code -eq 3 ]; then
+			break
+		fi
+		if  [ ! -f $option ]; then
+			echo "File not found"
+			continue
+		fi
+		git restore $option
+	done
+}
+
 diff () {
-	files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
-	if [ "$1" != "" ]; then
-		files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | grep -Ee ".*\.cs|.*\.gd" | sed -e "s/.* //")
-		#files=$(echo -e "$files" | grep -e "$1")
-	else
-		files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
-	fi
-	choose_option "$files" "Choose desired file"
-	if [ $? -ne 0 ]; then
-		return 1
-	elif  [ ! -f $option ]; then
-		echo "File not found"
-		return 2
-	fi
-	git diff HEAD $option
+	local file_pattern=$1
+	while [ 0 -ne 1 ]; do
+		if [ "$file_pattern" != "" ]; then
+			files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | grep -Ee ".*\.cs|.*\.gd" | sed -e "s/.* //")
+			#files=$(echo -e "$files" | grep -e "$1")
+		else
+			files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
+		fi
+		if [ "$files" == "" ]; then
+			echo "No modified files found"
+			break
+		fi
+		choose_option "$files" "Choose desired file (or just press ENTER to return)" 0 0 1
+		local return_code=$?
+		if [ $return_code -eq 5 ]; then
+			break
+		fi
+		if  [ ! -f $option ]; then
+			echo "File not found"
+			continue
+		fi
+		git diff HEAD $option
+	done
 }
 
 apply_pr () {
@@ -164,13 +199,14 @@ apply_pr () {
 # $2 is the selection message. E.g.: "Choose desired file"
 # $3 is message if no options were provided. E.g.: "No remotes configured. Aborting push command."
 # $4 is the default option. E.g. "main"
+# $5 if 1 just ENTER returns code 5 (cancelled), if empty of other value will return code 4 (option not found)
 choose_option () {
 	option_count=$(echo -e "$1" | wc -l)
-
 	default_option="$4"
 	default_option_number=1
 	has_default=false
 	default_option_message=""
+	local cancel_on_enter=$5
 	if [ "$default_option" != "" ]; then
 		for option_str in $1; do
 			if [ "$option_str" == "$default_option" ]; then
@@ -182,8 +218,11 @@ choose_option () {
 		done
 	fi
 			
-	[ $option_count -eq 0 ] && echo -e "$3" && return 3
-	[ $option_count -eq 1 ] && option=$(echo "$1" | cut -f1 -d " ") && return 0
+	[ $option_count -eq 0 ] && echo -e "$3" && return 3 # 3 = no options supplied
+	
+	# commented out because of a bug: diff and restore_single_file now run in a loop and don't know to break when choose_option return 0
+	# [ $option_count -eq 1 ] && option=$(echo "$1" | cut -f1 -d " ") && return 0
+	
 	i=0
 	limited=0
 	for option in $1; do
@@ -198,6 +237,9 @@ choose_option () {
 	echo ""
 	echo "$2"
 	read -p "(1 - $option_count)$default_option_message: " opt_number
+	if [ "$opt_number" == "" ] && [ "$cancel_on_enter" == "1" ]; then
+		return 5
+	fi
 	num_regex="^[0-9]+$"
 	if [ "$has_default" == "true" ]; then
 		opt_number=$default_option_number
@@ -229,6 +271,7 @@ list_options () {
 	echo "  p) git push, choosing from a list of remotes and branches"
 	echo "	pl) git pull"
 	echo "  am) git commit --amend -m \"[prompt for message]\" (amend last commit message)"
+	echo "  rsf) git restore single file, choosing from a list of files"
 	echo "  rhc) git reset --hard && git clean -df (reset hard and delete untracked files)"
 	echo "  d) git diff, choosing from a list of files"
 	echo "  ds) git diff scripts only (*.gd, *.cs, *.sh, *.bat), choosing from a list of files"
@@ -247,7 +290,8 @@ option=""
 
 while [ "$do_quit" != "true" ]; do
 	echo ""
-	read -p "Command (s/l/aa/ac/acp/apr/c/p/pl/am/rhc/d/ds/cs/csq), help(h) or quit(q): " option
+	echo "Command (s/l/aa/ac/acp/apr/c/p/pl/am/rsf/rhc/d/ds/cs/csq), help(h) or quit(q):"
+	read -p "" option
 	echo ""
 	case $option in
 	  s) status;;
@@ -260,6 +304,7 @@ while [ "$do_quit" != "true" ]; do
 	  p) push;;
 	  pl) pull;;
 	  am) commit_ammend;;
+	  rsf) restore_single_file;;
 	  rhc) reset_hard;;
 	  d) diff;;
 	  ds) diff_scripts;;
