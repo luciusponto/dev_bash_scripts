@@ -152,7 +152,11 @@ cycle_command_on_files () {
 }
 
 restore_single_file () {
-	local files=$(( git ls-files --modified --deleted --other --exclude-standard; git diff --name-only --cached ) | sort -u)
+	
+	#TODO: bug - at the moment, it cycles without refreshing the file list after files being restored. Workaround is to pressing
+	# ENTER to return, then go to rsf again. Or just ignore the files in the list that you've just restored
+
+	local files=$(( git ls-files --modified --deleted --exclude-standard; git diff --name-only --cached ) | sort -u)
 		# git ls-files --modified --deleted --other --exclude-standard # list modified, deleted and new unstaged files
 		# git diff --name-only --cached | grep "$filter_command" # list new files staged for addition
 	local command="git restore"
