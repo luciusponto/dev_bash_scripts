@@ -32,12 +32,12 @@ reset_hard () {
 
 push () {
 	remotes=$(git remote)
-	choose_option "$remotes" "Choose remote: " "No remotes configured. Aborting push command."
+	choose_option "$remotes" "Choose remote: " "No remotes configured. Aborting push command." "" 0 1
 	ret_code=$?; [ $? -ne 0 ] && return $ret_code
 	remote=$option
 	branches=$(git branch | sed -e "s/^[* ] //")
 	curr_branch=$(git branch --show-current)
-	choose_option "$branches" "Choose branch to push. Default is current local branch \"$curr_branch\"." "No branches found. Aborting push command." "$curr_branch"
+	choose_option "$branches" "Choose branch to push. Default is current local branch \"$curr_branch\"." "No branches found. Aborting push command." "$curr_branch" 0 1
 	ret_code=$?; [ $? -ne 0 ] && return $ret_code
 	branch=$option
 	confirm "About to run: git push -u $remote $branch." && git push -u $remote $branch && echo ""
@@ -133,9 +133,9 @@ restore_single_file () {
 			echo "No modified files found"
 			break
 		fi		
-		choose_option "$files" "Choose desired file (or just press ENTER to return)" 0 0 1
+		choose_option "$files" "Choose desired file (or just press ENTER to return)" "" "" 1 0
 		local return_code=$?
-		if [ $return_code -eq 5 ] || [ $return_code -eq 3 ]; then
+		if [ $return_code -eq 0 ] && [ "$option" == "" ]; then
 			break
 		fi
 		if  [ ! -f $option ]; then
@@ -143,6 +143,7 @@ restore_single_file () {
 			continue
 		fi
 		git restore $option
+		[ $option_count -eq 1 ] && break
 	done
 }
 
@@ -159,9 +160,9 @@ diff () {
 			echo "No modified files found"
 			break
 		fi
-		choose_option "$files" "Choose desired file (or just press ENTER to return)" 0 0 1
+		choose_option "$files" "Choose desired file (or just press ENTER to return)" "" "" 1 1
 		local return_code=$?
-		if [ $return_code -eq 5 ]; then
+		if [ $return_code -eq 0 ] && [ "$option" == "" ]; then
 			break
 		fi
 		if  [ ! -f $option ]; then
@@ -169,6 +170,7 @@ diff () {
 			continue
 		fi
 		git diff HEAD $option
+		[ $option_count -eq 1 ] && break
 	done
 }
 
@@ -199,13 +201,15 @@ apply_pr () {
 # $2 is the selection message. E.g.: "Choose desired file"
 # $3 is message if no options were provided. E.g.: "No remotes configured. Aborting push command."
 # $4 is the default option. E.g. "main"
-# $5 if 1 just ENTER returns code 5 (cancelled), if empty of other value will return code 4 (option not found)
+# $5 if $5 is 1 and $4 (deafault option) is empty, just pressing ENTER returns code 0 and empty $option, otherwise returns code 4 (option not found)
+# $6 if 1 and option_count = 1, automatically choose that option and return with code 0
 choose_option () {
 	option_count=$(echo -e "$1" | wc -l)
 	default_option="$4"
 	default_option_number=1
 	has_default=false
 	default_option_message=""
+	auto_select_single_option=$6
 	local cancel_on_enter=$5
 	if [ "$default_option" != "" ]; then
 		for option_str in $1; do
@@ -220,8 +224,7 @@ choose_option () {
 			
 	[ $option_count -eq 0 ] && echo -e "$3" && return 3 # 3 = no options supplied
 	
-	# commented out because of a bug: diff and restore_single_file now run in a loop and don't know to break when choose_option return 0
-	# [ $option_count -eq 1 ] && option=$(echo "$1" | cut -f1 -d " ") && return 0
+	[ $option_count -eq 1 ] && [ "$auto_select_single_option" == "1" ] && option=$(echo "$1" | cut -f1 -d " ") && return 0
 	
 	i=0
 	limited=0
@@ -287,6 +290,7 @@ quit () {
 do_quit=false
 message=""
 option=""
+option_count=0
 
 while [ "$do_quit" != "true" ]; do
 	echo ""
