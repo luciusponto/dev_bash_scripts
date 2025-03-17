@@ -152,7 +152,9 @@ cycle_command_on_files () {
 }
 
 restore_single_file () {
-	local files=$(git ls-files --modified --deleted --other --exclude-standard | sort -u)
+	local files=$(( git ls-files --modified --deleted --other --exclude-standard; git diff --name-only --cached ) | sort -u)
+		# git ls-files --modified --deleted --other --exclude-standard # list modified, deleted and new unstaged files
+		# git diff --name-only --cached | grep "$filter_command" # list new files staged for addition
 	local command="git restore"
 	local return_on_enter="1"
 	local auto_select_single_option="0"
@@ -169,8 +171,6 @@ diff () {
 		filter_command="$filter_command"'"'
 		filter_command=$(echo "$filter_command" | sed -e "s/\(.*\)|/\1/")
 		files=$(eval git ls-files --modified | grep "$filter_command" | sort -u)
-		# git ls-files --modified --deleted --other --exclude-standard # list modified, deleted and new unstaged files
-		#git diff --name-only --cached | grep "$filter_command" # list new files staged for addition
 	else
 		files=$(eval git ls-files --modified --deleted --other --exclude-standard | sort -u)
 	fi
