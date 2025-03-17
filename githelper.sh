@@ -117,61 +117,68 @@ print_cheat_sheet () {
 }
 
 diff_scripts () {
-	diff ".*\.gd|.*\.cs|.*\.sh|.*\.bat"
+	diff "gd cs sh bat"
+}
+
+cycle_command_on_files () {
+	local command="$1"
+	local files="$2"
+	local enter_to_return="$3"
+	local autoselect_single_option="$4"
+	
+	while [ 0 -ne 1 ]; do
+		if [ "$files" == "" ]; then
+			echo "No modified files found "
+			break
+		fi
+		
+		choose_option "$files" "Choose desired file (or only ENTER to cancel)" "" "" "$enter_to_return" "$auto_select_single_option"
+		local return_code=$?
+		if [ $return_code -eq 0 ] && [ "$option" == "" ]; then
+			break
+		fi
+		if [ $return_code -ne 0 ]; then
+			echo "Error choosing option (code: $return_code)"
+			continue
+		fi
+		if  [ ! -f $option ]; then
+			echo "File not found"
+			continue
+		fi
+		eval $command $option
+		echo ""
+		[ $option_count -eq 1 ] && break
+	done
 }
 
 restore_single_file () {
-	local file_pattern=$1
-	while [ 0 -ne 1 ]; do
-		if [ "$file_pattern" != "" ]; then
-			files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | grep -Ee ".*\.cs|.*\.gd" | sed -e "s/.* //")
-			#files=$(echo -e "$files" | grep -e "$1")
-		else
-			files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
-		fi
-		if [ "$files" == "" ]; then
-			echo "No modified files found"
-			break
-		fi		
-		choose_option "$files" "Choose desired file (or just press ENTER to return)" "" "" 1 0
-		local return_code=$?
-		if [ $return_code -eq 0 ] && [ "$option" == "" ]; then
-			break
-		fi
-		if  [ ! -f $option ]; then
-			echo "File not found"
-			continue
-		fi
-		git restore $option
-		[ $option_count -eq 1 ] && break
-	done
+	local files=$(git ls-files --modified --deleted --other --exclude-standard | sort -u)
+	local command="git restore"
+	local return_on_enter="1"
+	local auto_select_single_option="0"
+	cycle_command_on_files "$command" "$files" "$return_on_enter" "$auto_select_single_option"
 }
 
 diff () {
-	local file_pattern=$1
-	while [ 0 -ne 1 ]; do
-		if [ "$file_pattern" != "" ]; then
-			files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | grep -Ee ".*\.cs|.*\.gd" | sed -e "s/.* //")
-			#files=$(echo -e "$files" | grep -e "$1")
-		else
-			files=$(git status -u | grep -Ee "^.*(modified:|added:|removed:).*$" | sed -e "s/.* //")
-		fi
-		if [ "$files" == "" ]; then
-			echo "No modified files found"
-			break
-		fi
-		choose_option "$files" "Choose desired file (or just press ENTER to return)" "" "" 1 1
-		local return_code=$?
-		if [ $return_code -eq 0 ] && [ "$option" == "" ]; then
-			break
-		fi
-		if  [ ! -f $option ]; then
-			echo "File not found"
-			continue
-		fi
-		git diff HEAD $option
-		[ $option_count -eq 1 ] && break
-	done
+	local extensions=$1
+	if [ "$extensions" != "" ]; then
+		local filter_command='-Ee "'
+		for extension in $extensions; do
+			filter_command="$filter_command"'.*\.'"$extension"'|'
+		done
+		filter_command="$filter_command"'"'
+		filter_command=$(echo "$filter_command" | sed -e "s/\(.*\)|/\1/")
+		files=$(eval git ls-files --modified | grep "$filter_command" | sort -u)
+		# git ls-files --modified --deleted --other --exclude-standard # list modified, deleted and new unstaged files
+		#git diff --name-only --cached | grep "$filter_command" # list new files staged for addition
+	else
+		files=$(eval git ls-files --modified --deleted --other --exclude-standard | sort -u)
+	fi
+
+	local command="git diff HEAD"
+	local return_on_enter="1"
+	local auto_select_single_option="1"
+	cycle_command_on_files "$command" "$files" "$return_on_enter" "$auto_select_single_option"
 }
 
 apply_pr () {
@@ -241,7 +248,8 @@ choose_option () {
 	echo "$2"
 	read -p "(1 - $option_count)$default_option_message: " opt_number
 	if [ "$opt_number" == "" ] && [ "$cancel_on_enter" == "1" ]; then
-		return 5
+		option=""
+		return 0
 	fi
 	num_regex="^[0-9]+$"
 	if [ "$has_default" == "true" ]; then
