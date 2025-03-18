@@ -153,7 +153,6 @@ cycle_command_on_files () {
 				file_list_command='git ls-files --modified'
 			elif [ "$status_to_list" == "$STATUS_MODIFIED_DELETED" ]; then
 				file_list_command='git ls-files --modified --deleted'
-			else
 			elif [ "$status_to_list" == "$STATUS_NEW_ADDED_MODIFIED_DELETED" ]; then
 				file_list_command='git ls-files --modified --deleted --other --exclude-standard; git diff --name-only --cached'
 			else
@@ -198,6 +197,7 @@ restore_single_file () {
 	local enter_to_return=1
 	local auto_select_single_option=0
 	local refresh_list_each_cycle=1
+	
 		
 	cycle_command_on_files "$status_to_list" "$extension_filters" "$command" "$enter_to_return" "$auto_select_single_option" "$refresh_list_each_cycle"
 }
