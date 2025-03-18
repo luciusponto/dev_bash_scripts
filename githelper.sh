@@ -2,6 +2,10 @@
 
 MAX_OPTIONS=20
 
+STATUS_MODIFIED=10
+STATUS_MODIFIED_DELETED=11
+STATUS_NEW_ADDED_MODIFIED_DELETED=12
+
 status_command_only () {
 	git status -u
 }
@@ -121,14 +125,50 @@ diff_scripts () {
 }
 
 cycle_command_on_files () {
-	local command="$1"
-	local files="$2"
-	local enter_to_return="$3"
-	local autoselect_single_option="$4"
-	
+	local status_to_list="$1" # STATUS_MODIFIED or STATUS_NEW_ADDED_MODIFIED_DELETED
+	local extension_filters="$2" # space separated file extensions to filter. E.g.: "sh c java txt"
+	local command="$3"
+	local enter_to_return="$4"
+	local auto_select_single_option="$5"
+	local refresh_list_each_cycle="$6" # if 1, find files again after each cycle. Otherwise, reuse file list (faster).
+
+	local files=""
+	local files_initialised=0
+
 	while [ 0 -ne 1 ]; do
+	
+		if [ $files_initialised -eq 0 ] || [ "$refresh_list_each_cycle" == "1" ]; then
+			local filter_command=""
+			if [ "$extension_filters" != "" ]; then
+				local filter_command='| grep -Ee "'
+				for extension in $extension_filters; do
+					filter_command="$filter_command"'.*\.'"$extension"'|'
+				done
+				filter_command="$filter_command"'"'
+				filter_command=$(echo "$filter_command" | sed -e "s/\(.*\)|/\1/")
+			fi
+			
+			file_list_command=""
+			if [ "$status_to_list" == "$STATUS_MODIFIED" ]; then
+				file_list_command='git ls-files --modified'
+			elif [ "$status_to_list" == "$STATUS_MODIFIED_DELETED" ]; then
+				file_list_command='git ls-files --modified --deleted'
+			else
+			elif [ "$status_to_list" == "$STATUS_NEW_ADDED_MODIFIED_DELETED" ]; then
+				file_list_command='git ls-files --modified --deleted --other --exclude-standard; git diff --name-only --cached'
+			else
+				echo "Status type not found: *$status_to_list*"
+			fi
+			file_list_command="$file_list_command $filter_command"
+
+			files=$(( eval "$file_list_command" ) | sort -u)
+			
+			files_initialised=1
+		fi
+		
+	
 		if [ "$files" == "" ]; then
-			echo "No modified files found "
+			echo "No relevant files found "
 			break
 		fi
 		
@@ -152,37 +192,25 @@ cycle_command_on_files () {
 }
 
 restore_single_file () {
-	
-	#TODO: bug - at the moment, it cycles without refreshing the file list after files being restored. Workaround is to pressing
-	# ENTER to return, then go to rsf again. Or just ignore the files in the list that you've just restored
-
-	local files=$(( git ls-files --modified --deleted --exclude-standard; git diff --name-only --cached ) | sort -u)
-		# git ls-files --modified --deleted --other --exclude-standard # list modified, deleted and new unstaged files
-		# git diff --name-only --cached | grep "$filter_command" # list new files staged for addition
+	local status_to_list=$STATUS_MODIFIED_DELETED
+	local extension_filters=""
 	local command="git restore"
-	local return_on_enter="1"
-	local auto_select_single_option="0"
-	cycle_command_on_files "$command" "$files" "$return_on_enter" "$auto_select_single_option"
+	local enter_to_return=1
+	local auto_select_single_option=0
+	local refresh_list_each_cycle=1
+		
+	cycle_command_on_files "$status_to_list" "$extension_filters" "$command" "$enter_to_return" "$auto_select_single_option" "$refresh_list_each_cycle"
 }
 
 diff () {
-	local extensions=$1
-	if [ "$extensions" != "" ]; then
-		local filter_command='-Ee "'
-		for extension in $extensions; do
-			filter_command="$filter_command"'.*\.'"$extension"'|'
-		done
-		filter_command="$filter_command"'"'
-		filter_command=$(echo "$filter_command" | sed -e "s/\(.*\)|/\1/")
-		files=$(eval git ls-files --modified | grep "$filter_command" | sort -u)
-	else
-		files=$(eval git ls-files --modified --deleted --other --exclude-standard | sort -u)
-	fi
-
+	local status_to_list=$STATUS_MODIFIED
+	local extension_filters="$1"
 	local command="git diff HEAD"
-	local return_on_enter="1"
-	local auto_select_single_option="1"
-	cycle_command_on_files "$command" "$files" "$return_on_enter" "$auto_select_single_option"
+	local enter_to_return=1
+	local auto_select_single_option=1
+	local refresh_list_each_cycle=0
+	
+	cycle_command_on_files "$status_to_list" "$extension_filters" "$command" "$enter_to_return" "$auto_select_single_option" "$refresh_list_each_cycle"
 }
 
 apply_pr () {
