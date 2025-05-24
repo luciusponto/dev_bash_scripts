@@ -44,11 +44,9 @@ build_deploy () {
 		mkdir -p $build_dir
 	fi
 
-	rm $build_dir/*
+	[ -d $build_dir ] && rm $build_dir/*
 	 
 	$GODOT --headless --export-release "$preset" $build_dir/$file
-	 
-	# /c/Program\ Files/7-Zip/7z.exe a .build/html.zip .build/html
 	 
 	$BUTLER push $build_dir $itch_path:$channel --userversion-file $BUILD_NUMBER_FILE
 }
@@ -90,7 +88,7 @@ if [ ! -f $BUILD_NUMBER_FILE ]; then
 fi
 
 build_number=$(head -n1 $BUILD_NUMBER_FILE)
-echo $build_number | grep -Pe "[0-9]+\.[0-9]+\.[\-]{0,1}[0-9]+"
+echo $build_number | grep -Pe "[0-9]+\.[0-9]+\.[\-]{0,1}[0-9]+" 2>&1 > /dev/null
 [ $? -ne 0 ] && echo -e "\nInvalid build number. Should be semantic, i.e. in the format 1.0.0" && exit 7
 
 major_minor=$(echo $build_number | sed -e "s/[\-]*[0-9]*$//")
@@ -99,14 +97,21 @@ patch_version=$(echo $build_number | sed -e "s/^.*\.//")
 new_patch_version=$((patch_version+1))
 new_version_number=$major_minor$new_patch_version
 
-echo "Increased version number: $new_version_number"
+echo "Version number: $build_number -> $new_version_number"
 echo $new_version_number > $BUILD_NUMBER_FILE
 
 itch_path=$(grep $ITCH_DATA_FILE -e "^itch:" | sed -e "s/^itch.//")
 echo "Itch path: [$itch_path]"
 
+build_error=0
+
 for platform in $platforms; do
 	build_deploy $platform
+	last_err=$?
+	[ $last_err -ne 0 ] && build_error=$last_err
 done
+
+echo -e "\nFinished building version $new_version_number"
+[ $build_error -ne 0 ] && echo "Error code $build_error"
 
   
