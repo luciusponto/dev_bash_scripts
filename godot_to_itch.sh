@@ -1,21 +1,20 @@
  #!/bin/bash
-GODOT=~/AppData/Roaming/Godot/app_userdata/Godots/versions/Godot_v4_4-stable_win64_exe/Godot_v4.4-stable_win64.exe
-BUTLER=~/AppData/Roaming/itch/apps/butler/butler.exe
-
 SETTINGS_DIR=.godot_to_itch
 BUILD_NUMBER_FILE=$SETTINGS_DIR/buildnumber.txt
 ITCH_DATA_FILE=$SETTINGS_DIR/itch-butler.txt
+APP_PATHS_FILE=$SETTINGS_DIR/app_paths.sh
+PLATFORMS_FILE=$SETTINGS_DIR/platforms.txt
 
-ALL_PLATFORMS="win64 html5"
+ALL_PLATFORMS="win64 html5 linux64"
 
 
 usage () {
 	echo -e "\nUsage:\n"
 	script=$(basename $0)
 	echo -e "$script [platform1,platform2,...]\n"
-	echo "platform can be win64, html5 or all"
+	echo "platform can be win64, html5, linux64 or all"
 	echo "if no arguments are supplied and $PLATFORMS_FILE exists, platforms will come from it"
-	echo "e.g.: $script win64,html5"
+	echo "e.g.: $script win64,html5,linux64"
 	echo "e.g.: $script all"
 	exit $1
 }
@@ -33,6 +32,12 @@ build_deploy () {
 		preset="Windows Desktop"
 		channel=win-64
 		file=game.exe
+	fi
+
+	if [ "$platf" == "linux64" ]; then
+		preset="Linux"
+		channel=linux-64
+		file=game
 	fi
 	
 	[ "$preset" == "" ] && echo -e "\nBug: platform $platf not correctly setup. Please edit the script to add this platform." && exit 11
@@ -66,11 +71,23 @@ if [ ! -f $ITCH_DATA_FILE ]; then
 	exit 1
 fi
 
+if [ ! -f $APP_PATHS_FILE ]; then
+	echo "Could not find app paths file: $APP_PATHS_FILE"
+	echo "Create this file and add these lines:"
+	echo "GODOT=[Unix style full path to Godot]"
+    echo "BUTLER=[Unix style full path to Butler]"
+	exit 13
+fi
+
+. $APP_PATHS_FILE
+
 if [ "$1" == "all" ]; then
 	platforms=$ALL_PLATFORMS
 else
 	platforms=$(echo "$@" | sed -e "s/,/ /g")
 fi
+
+[ "$platforms" == "" ] && echo -e "No platforms provided.\n" && usage && exit 12
 
 for platform in $platforms; do
 	is_valid=0
@@ -88,7 +105,7 @@ if [ ! -f $BUILD_NUMBER_FILE ]; then
 fi
 
 build_number=$(head -n1 $BUILD_NUMBER_FILE)
-echo $build_number | grep -Pe "[0-9]+\.[0-9]+\.[\-]{0,1}[0-9]+" 2>&1 > /dev/null
+echo $build_number | grep -Pe "[0-9]+\.[0-9]+\.[\-]{0,1}[0-9]+" > /dev/null 2>&1
 [ $? -ne 0 ] && echo -e "\nInvalid build number. Should be semantic, i.e. in the format 1.0.0" && exit 7
 
 major_minor=$(echo $build_number | sed -e "s/[\-]*[0-9]*$//")

@@ -221,13 +221,13 @@ apply_pr () {
 	read pr_url
 	echo ""
 	pr_pattern="^.*github\\.com.*\\/pull\\/[0-9]+$"
-	echo "$pr_url" | grep -Pe "$pr_pattern" 2>&1 > /dev/null
+	echo "$pr_url" | grep -Pe "$pr_pattern" > /dev/null 2>&1
 	[ $? -ne 0 ] && echo -e "Pull request URL: $pr_url\ndoes not match PR pattern: \"$pr_pattern\".\nAborting" && return 1
 	patch_path="/tmp/$(date '+%Y%m%d_%H%M%S').patch"
 	curl -L "$pr_url".patch -o "$patch_path"
 	[ $? -ne 0 ] && echo "Patch could not be downloaded. Aborting" && return 1
 	echo -e "\nDownloaded patch file to $patch_path."
-	grep "$patch_path" -e "^diff --git" 2>&1 > /dev/null
+	grep "$patch_path" -e "^diff --git" > /dev/null 2>&1
 	[ $? -ne 0 ] && echo -e "\nPatch file contents did not match expected pattern. Aborting." && return 2
 	echo -e "\nApplying patch file..."
 	git apply "$patch_path"
