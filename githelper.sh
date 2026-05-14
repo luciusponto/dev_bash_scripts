@@ -5,6 +5,7 @@ MAX_OPTIONS=20
 STATUS_MODIFIED=10
 STATUS_MODIFIED_DELETED=11
 STATUS_NEW_ADDED_MODIFIED_DELETED=12
+STATUS_STAGED=13
 
 status_command_only () {
 	git status -u
@@ -155,6 +156,8 @@ cycle_command_on_files () {
 				file_list_command='git ls-files --modified --deleted'
 			elif [ "$status_to_list" == "$STATUS_NEW_ADDED_MODIFIED_DELETED" ]; then
 				file_list_command='git ls-files --modified --deleted --other --exclude-standard; git diff --name-only --cached'
+			elif [ "$status_to_list" == "$STATUS_STAGED" ]; then
+				file_list_command='git diff --name-only --cached'
 			else
 				echo "Status type not found: *$status_to_list*"
 			fi
@@ -190,7 +193,12 @@ cycle_command_on_files () {
 	done
 }
 
+print_header() {
+	echo -e "\n\n$@:\n"
+}
+
 restore_single_file () {
+	print_header "Restore single file"
 	local status_to_list=$STATUS_MODIFIED_DELETED
 	local extension_filters=""
 	local command="git restore"
@@ -198,11 +206,35 @@ restore_single_file () {
 	local auto_select_single_option=0
 	local refresh_list_each_cycle=1
 	
-		
+	cycle_command_on_files "$status_to_list" "$extension_filters" "$command" "$enter_to_return" "$auto_select_single_option" "$refresh_list_each_cycle"
+}
+
+add_single_file () {
+	print_header "Add single file"
+	local status_to_list=$STATUS_MODIFIED_DELETED
+	local extension_filters=""
+	local command="git add"
+	local enter_to_return=1
+	local auto_select_single_option=0
+	local refresh_list_each_cycle=1
+	
+	cycle_command_on_files "$status_to_list" "$extension_filters" "$command" "$enter_to_return" "$auto_select_single_option" "$refresh_list_each_cycle"
+}
+
+unstage_single_file () {
+	print_header "Unstage single file"
+	local status_to_list=$STATUS_STAGED
+	local extension_filters=""
+	local command="git restore --staged"
+	local enter_to_return=1
+	local auto_select_single_option=0
+	local refresh_list_each_cycle=1
+	
 	cycle_command_on_files "$status_to_list" "$extension_filters" "$command" "$enter_to_return" "$auto_select_single_option" "$refresh_list_each_cycle"
 }
 
 diff () {
+	print_header "Diff single file"
 	local status_to_list=$STATUS_MODIFIED
 	local extension_filters="$1"
 	local command="git diff HEAD"
@@ -304,17 +336,19 @@ choose_option () {
 
 list_options () {
 	echo -e "\nGit helper. Available commands:\n"
-	echo "  s)git status -u"
+	echo "  s) git status -u"
 	echo "  l) git log --oneline"
+	echo "  a) git add single file, choosing from a list of files"
+	echo "  u) git unstage single file, choosing from a list of files"
 	echo "  aa) git add ."
 	echo "  ac) git add . && git commit -m \"[prompt for message]\""
 	echo "  acp) git add . && git commit -m && git push -u"
-	echo "  apr) apply patch from pull request"
 	echo "  c) git commit -m \"[prompt for message]\""
-	echo "  p) git push, choosing from a list of remotes and branches"
-	echo "	pl) git pull"
 	echo "  am) git commit --amend -m \"[prompt for message]\" (amend last commit message)"
-	echo "  rsf) git restore single file, choosing from a list of files"
+	echo "  apr) apply patch from pull request"
+	echo "  p) git push, choosing from a list of remotes and branches"
+	echo "  pl) git pull"
+	echo "  r) git restore single file, choosing from a list of files"
 	echo "  rhc) git reset --hard && git clean -df (reset hard and delete untracked files)"
 	echo "  d) git diff, choosing from a list of files"
 	echo "  ds) git diff scripts only (*.gd, *.cs, *.sh, *.bat), choosing from a list of files"
@@ -334,12 +368,14 @@ option_count=0
 
 while [ "$do_quit" != "true" ]; do
 	echo ""
-	echo "Command (s/l/aa/ac/acp/apr/c/p/pl/am/rsf/rhc/d/ds/cs/csq), help(h) or quit(q):"
+	echo "Command (s/l/a/u/aa/ac/acp/c/am/apr/p/pl/r/rhc/d/ds/cs/csq), (h)elp or (q)uit:"
 	read -p "" option
 	echo ""
 	case $option in
 	  s) status;;
 	  l) log;;
+	  a) add_single_file;;
+	  u) unstage_single_file;;
 	  aa) add_all;;
 	  ac) add_all_and_commit;;
 	  acp) add_all_commit_push;;
@@ -348,7 +384,7 @@ while [ "$do_quit" != "true" ]; do
 	  p) push;;
 	  pl) pull;;
 	  am) commit_ammend;;
-	  rsf) restore_single_file;;
+	  r) restore_single_file;;
 	  rhc) reset_hard;;
 	  d) diff;;
 	  ds) diff_scripts;;
